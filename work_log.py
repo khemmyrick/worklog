@@ -10,23 +10,29 @@ def clear_screen():
     """Clear the screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
+
 def search_date():
     pass
+
 
 def search_term():
     pass
 
+
 def search_regex():
     pass
 
+
 def new_entry():
-    # Have user specify date. MM/DD/YYYY Format their entry into a datetime object.
-    # next ask user to title their task.
-    # Ask for Time spent in minutes.
-    # Ask for optional notes.  If they enter nothing, it's fine.
-    # Let user know the entry is saved.  Wait for input to return to main menu.
+    """Add new entry to work log."""
+    # Format their entry into a date object.
+    try:
+        with open('log.csv', 'r') as logfile:
+            demostring = logfile.read()
+    except FileNotFoundError:
+        demostring = ''
     with open('log.csv', 'a') as logfile:
-        fieldnames = ['entry_date', 'entry_title', 'time_spent', 'notes']
+        fieldnames = ['Date', 'Task', 'Time Spent', 'Notes']
         # replace these with 'Date', 'Task', 'Time Spent' and 'Notes'
         logwriter = csv.DictWriter(logfile, fieldnames=fieldnames)
 
@@ -34,21 +40,20 @@ def new_entry():
         task_title = input("Please enter a title for this task. > ")
         task_time = input("Please enter number of minutes spent on task. > ")
         task_notes = input("Any additional notes? (Press enter to skip). > ")
-
-        # logwriter.writeheader() 
-        # check csv for header. if it exists, don't write it.
+        # if re.match('Date,Task', demostring) == False:
+        if demostring == '':
+            logwriter.writeheader()
         logwriter.writerow({
-            'entry_date': task_date,
-            'entry_title': task_title,
-            'time_spent': task_time,
-            'notes': task_notes
-        })
+            'Date': task_date,
+            'Task': task_title,
+            'Time Spent': task_time,
+            'Notes': task_notes
+            })
         # replace these strings after replacing row headers
 
     input("Entry saved.  Press enter to retrun to menu.")
     return task_title + " saved."
-        # add log entry
-    
+    # add log entry
 
 
 def search_entries():
