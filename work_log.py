@@ -19,10 +19,6 @@ def minute_check(minutes):
         return True
 
 
-def date_check():
-    pass
-
-
 def edit_entry(log):
     """Edit log entry."""
     with open('log.csv', 'r') as logfile:
@@ -229,36 +225,6 @@ def search_datelist(log_contents):
         results = []
         for entry in log_contents:
             if entry['Date'] == list_dict[selection]:
-                results.append(entry)
-        check_for_results(results)
-        search_loop -= 1
-
-
-def search_date(log_contents):
-    """Search by date."""
-    results = []
-    search_loop = 1
-
-    while search_loop:
-        clear_screen()
-
-        td_loop = 1
-        while td_loop:
-            target_date = input('''
-    Please enter date in following format:
-    MM/DD/YYYY
-    > ''')
-
-            try:
-                datetime.datetime.strptime(target_date,
-                                           "%m/%d/%Y")
-            except ValueError:
-                input('Invalid date.  Press enter to retry.')
-            else:
-                td_loop -= 1
-
-        for entry in log_contents:
-            if entry['Date'] == target_date:
                 results.append(entry)
         check_for_results(results)
         search_loop -= 1
