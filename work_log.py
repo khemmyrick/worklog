@@ -1,9 +1,3 @@
-# As of 10:47pm on 06/02/2018
-# Thanks to Chris Howell on the review-my-project slack for looking over the previous version.
-# Still to do: Prevent New Entry or Edit entry from saving invalid strings in dates/minutes sections.
-# Maybe recreate the way that main menu and search menu currently catch invalid options?
-# Do keyword or REGEX search sections need anything else?
-
 import datetime
 import csv
 import os
@@ -13,6 +7,20 @@ import re
 def clear_screen():
     """Clear the screen."""
     os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def minute_check(minutes):
+    try:
+        int(minutes)
+    except ValueError:
+        input('Invalid integer. Press enter to try again.')
+        return False
+    else:
+        return True
+
+
+def date_check():
+    pass
 
 
 def edit_entry(log):
@@ -26,40 +34,54 @@ def edit_entry(log):
             condemned = row_iter
 
             nd_loop = 1
-            date_fmt = r'(\d{2}/\d{2}/\d{4})?'
             while nd_loop:
                 clear_screen()
                 new_date = input('''
 {} is the date for this entry.
 Type new date 'MM/DD/YYYY' to change, or just press enter.
 '''.format(log['Date']))
-                if re.match(date_fmt, new_date):
+                if new_date == '':
                     nd_loop -= 1
                 else:
-                    input('Invalid date. Press enter to try again.')
+                    try:
+                        datetime.datetime.strptime(new_date, "%m/%d/%Y")
+                    except ValueError:
+                        input('Invalid date. Press enter to try again.')
+                    else:
+                        nd_loop -= 1
 
-            new_task = input('''
+            nt_loop = 1
+            while nt_loop:
+                new_task = input('''
 {} is the task name for this entry.
 Type new task name to change, or just press enter.
 '''.format(log['Task']))
+                if new_task == '' or re.match(r'\S+', new_task):
+                    nt_loop -= 1
+                else:
+                    input('Invalid task name.  Press enter to try again.')
 
             nm_loop = 1
-            nm_fmt = r'\d*'
             while nm_loop:
                 new_minutes = input('''
 {} is the number of minutes spent on this task.
 Type a new integer to edit, or just press enter to skip.
 '''.format(log['Time Spent']))
-                if re.match(nm_fmt, new_minutes):
+                if new_minutes == '':
                     nm_loop -= 1
                 else:
-                    input('Invalid integer. Press enter to try again.')
+                    legit = minute_check(new_minutes)
+                    if legit:
+                        nm_loop -= 1
+                    else:
+                        continue
 
             new_notes = input('''
 "{}"
 These are the task notes for this entry.
 Type new notes to replace, or press enter to skip.
 '''.format(log['Notes']))
+
             new_row = {'Date': new_date,
                        'Task': new_task,
                        'Time Spent': new_minutes,
@@ -172,6 +194,46 @@ def check_for_results(results):
         return
 
 
+def search_datelist(log_contents):
+    """Select date from list of available dates."""
+    results = []
+    search_loop = 1
+    while search_loop:
+        for entry in log_contents:
+            if entry['Date'] not in results:
+                results.append(entry['Date'])
+
+        list_loop = 1
+        list_dict = {}
+        clear_screen()
+        for day in results:
+            list_dict[list_loop] = day
+            print('{}: {}'.format(list_loop, day))
+            list_loop += 1
+
+        select_loop = 1
+        while select_loop:
+            try:
+                selection = int(input('Please select a date from this list.'))
+            except ValueError:
+                input('Input must be number. Press enter to retry.')
+            else:
+                try:
+                    list_dict[selection]
+                except KeyError:
+                    print('That number is not on the list.')
+                    input('Press enter to retry.')
+                else:
+                    select_loop -= 1
+
+        results = []
+        for entry in log_contents:
+            if entry['Date'] == list_dict[selection]:
+                results.append(entry)
+        check_for_results(results)
+        search_loop -= 1
+
+
 def search_date(log_contents):
     """Search by date."""
     results = []
@@ -179,51 +241,69 @@ def search_date(log_contents):
 
     while search_loop:
         clear_screen()
-        target_date = input('''
-Please enter date in following format:
-MM/DD/YYYY
-> ''')
-        date_fmt = r'\d{2}/\d{2}/\d{4}'
 
-        if re.match(date_fmt, target_date):
-            for entry in log_contents:
-                if entry['Date'] == target_date:
-                    results.append(entry)
-            check_for_results(results)
-            search_loop -= 1
+        td_loop = 1
+        while td_loop:
+            target_date = input('''
+    Please enter date in following format:
+    MM/DD/YYYY
+    > ''')
 
-        else:
-            print("Error: Invalid date. \n Please enter valid date.")
-            input("Press 'enter' to retry.")
+            try:
+                datetime.datetime.strptime(target_date,
+                                           "%m/%d/%Y")
+            except ValueError:
+                input('Invalid date.  Press enter to retry.')
+            else:
+                td_loop -= 1
+
+        for entry in log_contents:
+            if entry['Date'] == target_date:
+                results.append(entry)
+        check_for_results(results)
+        search_loop -= 1
 
 
 def search_date_range(log_contents):
     """Search by date range."""
     results = []
     search_loop = 1
-    range_fmt = r'\d{2}/\d{2}/\d{4}-\d{2}/\d{2}/\d{4}'
 
     while search_loop:
         clear_screen()
-        target_range = input('''
+
+        tr_loop = 1
+        while tr_loop:
+            target_range = input('''
 Please enter date range in following format:
 MM/DD/YYYY-MM/DD/YYYY
 > ''')
 
-        if re.match(range_fmt, target_range):
             targets = target_range.split(sep='-')
-            date_first = datetime.datetime.strptime(targets[0], "%m/%d/%Y")
-            date_last = datetime.datetime.strptime(targets[1], "%m/%d/%Y")
-            for entry in log_contents:
-                dtlog = datetime.datetime.strptime(entry['Date'], "%m/%d/%Y")
-                if dtlog >= date_first and dtlog <= date_last:
-                    results.append(entry)
-            check_for_results(results)
-            search_loop -= 1
+            try:
+                date_frst = datetime.datetime.strptime(targets[0], "%m/%d/%Y")
+                date_last = datetime.datetime.strptime(targets[1], "%m/%d/%Y")
+            except ValueError:
+                input('Invalid date range. Press enter to retry.')
+            else:
+                if date_frst < date_last:
+                    tr_loop -= 1
+                else:
+                    print('Invalid date range.')
+                    print('Please enter two dates, earliest first.')
+                    input('Press enter to retry.')
 
-        else:
-            print("Error: Invalid dates. \n Please enter valid date.")
-            input("Press 'enter' to retry.")
+        for entry in log_contents:
+            try:
+                dtlog = datetime.datetime.strptime(entry['Date'],
+                                                   "%m/%d/%Y")
+            except ValueError:
+                continue
+            else:
+                if dtlog >= date_frst and dtlog <= date_last:
+                    results.append(entry)
+        check_for_results(results)
+        search_loop -= 1
 
 
 def search_term(log_contents):
@@ -233,7 +313,17 @@ def search_term(log_contents):
 
     while search_loop:
         clear_screen()
-        target_term = input("Please enter search terms. > ")
+
+        tt_loop = 1
+        while tt_loop:
+            target_term = input("Please enter search keyword(s). > ")
+            if re.match(r'\w+', target_term):
+                tt_loop -= 1
+            else:
+                print('Enter a non-REGEX search term.')
+                print('Term should begin with an alphanumeric character.')
+                input('Press enter to retry.')
+
         for entry in log_contents:
             if re.search(
                 target_term.lower(),
@@ -245,13 +335,29 @@ def search_term(log_contents):
 
 
 def search_regex(log_contents):
-    """Search by regex strings?"""
+    """Search by regex strings."""
     results = []
     search_loop = 1
 
     while search_loop:
         clear_screen()
-        target_term = input("Please enter a valid REGEX pattern. > ")
+
+        tt_loop = 1
+        while tt_loop:
+            target_term = input("Please enter a valid REGEX pattern. > ")
+            try:
+                re.match(target_term, log_contents[0]['Task'])
+            except re.error:
+                clear_screen()
+                print('"{}" is not a valid REGEX pattern.'.format(target_term))
+                print('''
+For more information on REGEX patterns in python, please visit:
+https://docs.python.org/3/library/re.html
+''')
+                input('Press enter to retry.')
+            else:
+                tt_loop -= 1
+
         for entry in log_contents:
             if re.search(target_term,
                          entry['Task']) or re.search(target_term,
@@ -272,9 +378,34 @@ def new_entry():
     with open('log.csv', 'a') as logfile:
         fieldnames = ['Date', 'Task', 'Time Spent', 'Notes']
         logwriter = csv.DictWriter(logfile, fieldnames=fieldnames)
-        task_date = input("Please enter date in MM/DD/YYYY format. > ")
-        task_title = input("Please enter a title for this task. > ")
-        task_time = input("Please enter number of minutes spent on task. > ")
+
+        td_loop = 1
+        while td_loop:
+            task_date = input("Please enter date in MM/DD/YYYY format. > ")
+            try:
+                datetime.datetime.strptime(task_date, "%m/%d/%Y")
+            except ValueError:
+                input('Invalid date. Press enter to try again.')
+            else:
+                td_loop -= 1
+
+        tt_loop = 1
+        while tt_loop:
+            task_title = input("Please enter a title for this task. > ")
+            if re.match(r'\S+', task_title):
+                tt_loop -= 1
+            else:
+                input('Invalid task name.  Press enter to try again.')
+
+        tm_loop = 1
+        while tm_loop:
+            task_min = input("Enter number of minutes spent on task. > ")
+            legit = minute_check(task_min)
+            if legit:
+                tm_loop -= 1
+            else:
+                continue
+
         task_notes = input("Any additional notes? (Press enter to skip). > ")
 
         if demostring == '':
@@ -282,7 +413,7 @@ def new_entry():
         logwriter.writerow({
             'Date': task_date,
             'Task': task_title,
-            'Time Spent': task_time,
+            'Time Spent': task_min,
             'Notes': task_notes
             })
 
@@ -316,7 +447,7 @@ E) Return to Main Menu
 > """)
 
         if search_type.upper() == 'A':
-            search_date(log_contents)
+            search_datelist(log_contents)
         elif search_type.upper() == 'B':
             search_date_range(log_contents)
         elif search_type.upper() == 'C':
@@ -327,9 +458,9 @@ E) Return to Main Menu
             clear_screen()
             return
         else:
-            print(
-                "Invalid entry.  Please select either option A, B, C, D, or E"
-            )
+            print('''
+Invalid entry.  Please select either option A, B, C, D, or E.
+''')
 
 
 def main_menu():
